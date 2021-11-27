@@ -475,7 +475,7 @@ def main():
         st.markdown('### Load photos')
         image_files = st.file_uploader("", type=['png', 'jpg'], accept_multiple_files=True)
         #st.subheader('Load Calibration file')
-        st.markdown('### Load Calib file')
+        st.markdown('### Load Calibration file')
         CalibFile = st.file_uploader("", type=([".pckl", "txt"]))
         menu_jaws_positions = ['Central Relation',
             'Laterotrusion Left',
