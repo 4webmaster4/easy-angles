@@ -45,6 +45,37 @@ board_corners_facebow = [
 
 ]
 
+board_corners_facebow_nose = [
+    np.array(
+        [
+            [0.0085, 0.026973, 0.011185],
+            [0.0085, 0.013048, 0.001434],
+            [-0.0085, 0.013048, 0.001434],
+            [-0.0085, 0.026973, 0.011185],
+        ],
+        dtype=np.float32,
+    ),
+    np.array(
+        [
+            [0.0085, 0.0085, 0],
+            [0.0085, -0.0085, 0],
+            [-0.0085, -0.0085, 0],
+            [-0.0085, 0.0085, 0],
+        ],
+        dtype=np.float32,
+    ),
+    np.array(
+        [
+            [0.0085, -0.013048, 0.001434],
+            [0.0085, -0.026974, 0.011185],
+            [-0.0085, -0.026974, 0.011185],
+            [-0.0085, -0.013048, 0.001434],
+        ],
+        dtype=np.float32,
+    ),
+
+]
+
 board_corners_upper = [
     np.array(
         [
@@ -114,7 +145,7 @@ UpBoard = aruco.Board_create(board_corners_upper, ARUCO_DICT, UpBoard_ids)
 LowBoard = aruco.Board_create(board_corners_lower, ARUCO_DICT, LowBoard_ids)
 Right_TMJ_board = aruco.Board_create(board_corners_facebow, ARUCO_DICT, Right_TMJ_board_ids)
 Left_TMJ_board = aruco.Board_create(board_corners_facebow, ARUCO_DICT, Left_TMJ_board_ids)
-Nose_board = aruco.Board_create(board_corners_facebow, ARUCO_DICT, Nose_board_ids)
+Nose_board = aruco.Board_create(board_corners_facebow_nose, ARUCO_DICT, Nose_board_ids)
 
 
 def Calibrate(squareLength,markerLength,Cv2Images) :
@@ -198,34 +229,21 @@ def Calibrate(squareLength,markerLength,Cv2Images) :
 
 
 def GetCamIntrisics_from_File(CalibFile):
-
     fn = CalibFile.name
-
     if fn.endswith('.pckl') :
-
         CalibFile.seek(0)
-
         (K, distCoeffs, _, _) = pickle.load(CalibFile)
-
     if fn.endswith('.txt') :
-
         lines = [l for l in CalibFile]
-
         K, distCoeffs = np.array( eval(lines[1]) ), np.array( eval(lines[3]) )
-
-            
-
     fx, fy= K[0,0], K[1,1]
-
     cx, cy = K[0,2], K[1,2]
-
     return [(K, distCoeffs), (fx, fy, cx, cy)]
 ###################################################################################################
 
-def bdental_facebow():    
+def bdental_logo():    
     image = Image.open('images/logo.png')
     st.image(image, width=128)
-    st.title('Easy angles')
 
 def plot_3d(fx, fy, fz, lbx, lby, lbz):
     fig = plt.figure(figsize=(8,8))    
@@ -238,8 +256,14 @@ def plot_3d(fx, fy, fz, lbx, lby, lbz):
     ax.scatter(lbx, lby, lbz)
     return fig
 
+@st.cache(allow_output_mutation=True)
+def images_cache(image_files):
+    images_cached=image_files
+    return images_cached
+
 all_images_classified = False
 classified_image_list = []
+
 def images_classifier(image_files, file_pckl, menu_jaws_positions, menu_image_key, menu_jaws_positions_user_list):
     menu_image_key = 0
     menu_jaws_positions_user_list = []
@@ -248,7 +272,11 @@ def images_classifier(image_files, file_pckl, menu_jaws_positions, menu_image_ke
     for image_file in image_files:    
         if image_file and file_pckl and not all_images_classified:
             im = Image.open(image_file)
-            st.image(im,use_column_width=True)
+            im_small = np.array(im)
+            im_small = cv2.pyrDown(im_small)
+            im_small = cv2.pyrDown(im_small)
+
+            st.image(im_small,use_column_width=True)
             option = st.radio('Select lower jaw position:', menu_jaws_positions, key = menu_image_key)
             menu_jaws_positions_user_list.append(option)
             menu_image_key = menu_image_key+1
@@ -409,33 +437,37 @@ objects_poses = {}
 def main():
     selected_box = st.sidebar.selectbox(
     'Choose one of the following',
-    ('BDENTAL AXIOGRAPH', 'CAMERA CALIBRATION TOOL')
+    ('Bdental Easy Angles', 'Camera Calibration Tool')
     )
 
     #########################################################################################
     ########################### CAMERA CALIBRATION TOOL Page ################################
     #########################################################################################
-    if selected_box == 'CAMERA CALIBRATION TOOL':
+    if selected_box == 'Camera Calibration Tool':
+        bdental_logo()
+        st.title('Calibration tool')
+
         ############# Add some User Info ######################################################
         INFO =  [
             'BDENTAL Calibration tool is based on Opencv Charuco board detection.',
             'It is a robust camera calibration method, that will generate a .txt file,',
             'containing Camera Calibration parameters.',
             'For consistant and precise results please refere to this recommendations :',
-            '_Minimum_ : 10 photos, _Optimal_ : 20 photos, _Good_ : 30 photos, _Excellent_ : 40+ photos',
+            'Minimum : 10 photos',
+            'Optimal : 20 photos',
+            'Good : 30 photos',
+            'Excellent : 40+ photos',
             'You can download the charuco board from :',
             ]
         for line in INFO :
             st.text(line)
         st.write("[Charuco Board pdf download link.](https://github.com/issamdakir/BDENTAL4D-LINUX/blob/291/Resources/ForPrinting/CalibrationBoardA4.pdf)")
-                
-        st.subheader('Upload camera calibration photos :')
+
         ###########################################################################################
-        #CalibFiles = st.file_uploader("", type=['png', 'jpg','tif','tiff','TIF','TIFF', 'jpeg','bmp','webp','pfm','sr','ras','exr','hdr','pic'], accept_multiple_files=True)
-        CalibFiles = st.file_uploader("", type=['jpg', 'jpeg'], accept_multiple_files=True)
+        CalibFiles = st.file_uploader("Upload camera calibration photos", type=['jpg', 'jpeg'], accept_multiple_files=True)
         if CalibFiles :
-            CaseLength = st.number_input(label='Square width', min_value=0.00, max_value=None, value=24.40, help='The width in mm of the calibration board Square')                
-            MarkerLength = st.number_input(label='Marker width', min_value=0.00, max_value=None, value=12.30, help='The width in mm of the calibration board Marker')                
+            CaseLength = st.number_input(label='Square width in mm', min_value=0.00, max_value=None, value=24.40, help='The width in mm of the calibration board Square')                
+            MarkerLength = st.number_input(label='Marker width in mm', min_value=0.00, max_value=None, value=12.30, help='The width in mm of the calibration board Marker')                
             CalibrateButton = st.button('CALIBRATE CAMERA')
             if CalibrateButton :
                 Processing = st.empty()
@@ -453,7 +485,7 @@ def main():
                         continue
                 res, message, cameraMatrix, distCoeffs = Calibrate(CaseLength,MarkerLength,Cv2Images)
                 Processing.text('')
-                st.subheader('*Camera calibration results :*')
+                st.markdown('### Camera calibration results :')                
                 for line in message :
                     st.text(line)
                 if res :
@@ -469,14 +501,11 @@ def main():
                         mime='text/csv',
                     )
     
-    if selected_box == 'BDENTAL AXIOGRAPH':
-        bdental_facebow()
-        #st.subheader('Load Image(s)')
-        st.markdown('### Load photos')
-        image_files = st.file_uploader("", type=['png', 'jpg'], accept_multiple_files=True)
-        #st.subheader('Load Calibration file')
-        st.markdown('### Load Calibration file')
-        CalibFile = st.file_uploader("", type=([".pckl", "txt"]))
+    if selected_box == 'Bdental Easy Angles':
+        bdental_logo()
+        st.title('Easy angles')
+        image_files = st.file_uploader("Upload Photos", type=['png', 'jpg'], accept_multiple_files=True)
+        CalibFile = st.file_uploader("Upload Calibration file", type=([".pckl", "txt"]))
         menu_jaws_positions = ['Central Relation',
             'Laterotrusion Left',
             'Laterotrusion Right',
@@ -485,7 +514,7 @@ def main():
         ]
         menu_image_key = 0
         menu_jaws_positions_user_list = []
-        images_classifier(image_files, CalibFile, menu_jaws_positions, menu_image_key, menu_jaws_positions_user_list)
+        images_classifier(images_cache(image_files), CalibFile, menu_jaws_positions, menu_image_key, menu_jaws_positions_user_list)
         if all_images_classified:
             (cameraMatrix, distCoeffs), _ = GetCamIntrisics_from_File(CalibFile)
             for image_file in image_files:
@@ -1504,7 +1533,6 @@ def main():
                 + str(LeftShift)
                 + " mm",
             )
-
             st.pyplot(fig)
 
 if __name__ == "__main__":
