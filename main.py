@@ -9,6 +9,7 @@ import matplotlib.gridspec as gridspec
 from matplotlib.ticker import MultipleLocator
 from matplotlib.patches import Arc
 from matplotlib.transforms import IdentityTransform, TransformedBbox, Bbox
+import os
 # Constant parameters used in Aruco methods
 ARUCO_PARAMETERS = aruco.DetectorParameters_create()
 ARUCO_DICT = aruco.Dictionary_get(aruco.DICT_APRILTAG_36h11)
