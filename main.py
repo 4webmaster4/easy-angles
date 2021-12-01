@@ -9,6 +9,7 @@ import matplotlib.gridspec as gridspec
 from matplotlib.ticker import MultipleLocator
 from matplotlib.patches import Arc
 from matplotlib.transforms import IdentityTransform, TransformedBbox, Bbox
+import sys
 # Constant parameters used in Aruco methods
 ARUCO_PARAMETERS = aruco.DetectorParameters_create()
 ARUCO_DICT = aruco.Dictionary_get(aruco.DICT_APRILTAG_36h11)
@@ -467,6 +468,7 @@ def main():
 
         ###########################################################################################
         CalibFiles = st.file_uploader("Upload camera calibration photos", type=['jpg', 'jpeg'], accept_multiple_files=True)
+        st.text('Initial CalibFiles size'+str(sys.getsizeof(CalibFiles)))
         #if CalibFiles :
         CaseLength = st.number_input(label='Square width in mm', min_value=0.00, max_value=None, value=24.40, help='The width in mm of the calibration board Square')                
         MarkerLength = st.number_input(label='Marker width in mm', min_value=0.00, max_value=None, value=12.30, help='The width in mm of the calibration board Marker')                
@@ -476,6 +478,7 @@ def main():
             Processing = st.empty()
             Processing.text('Please wait while processing, results will be displayed within few secondes...')
             Cv2Images = []
+            st.text('Initial CV2Images size'+str(sys.getsizeof(Cv2Images)))
             for f in CalibFiles:
                 try :
                     st.text('ok'+str(count))
@@ -485,6 +488,7 @@ def main():
                     if Cv2img.size > 1 :
                         Cv2Images.append(Cv2img)
                         st.text('append ok'+str(image_append))
+                        st.text('Cv2Images size'+str(sys.getsizeof(Cv2Images)))
                         image_append = image_append + 1
                 except Exception as Error:
                     print(f'cant open {f.name}')
