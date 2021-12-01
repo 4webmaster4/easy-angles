@@ -464,42 +464,44 @@ def main():
 
         ###########################################################################################
         CalibFiles = st.file_uploader("Upload camera calibration photos", type=['jpg', 'jpeg'], accept_multiple_files=True)
-        if CalibFiles :
-            CaseLength = st.number_input(label='Square width in mm', min_value=0.00, max_value=None, value=24.40, help='The width in mm of the calibration board Square')                
-            MarkerLength = st.number_input(label='Marker width in mm', min_value=0.00, max_value=None, value=12.30, help='The width in mm of the calibration board Marker')                
-            CalibrateButton = st.button('CALIBRATE CAMERA')
-            if CalibrateButton :
-                st.text(CalibFiles)
-                Processing = st.empty()
-                Processing.text('Please wait while processing, results will be displayed within few secondes...')
-                Cv2Images = []
-                for f in CalibFiles:
-                    try :
-                        img = Image.open(f)
-                        Cv2img = np.array(img)
-                        if Cv2img.size > 1 :
-                            Cv2Images.append(Cv2img)
-                    except Exception as Error:
-                        print(f'cant open {f.name}')
-                        print(Error)
-                        continue
-                res, message, cameraMatrix, distCoeffs = Calibrate(CaseLength,MarkerLength,Cv2Images)
-                Processing.text('')
-                st.markdown('### Camera calibration results :')                
-                for line in message :
-                    st.text(line)
-                if res :
-                    st.write('K Matrix : ',cameraMatrix)
-                    st.write('Distorsion coefficients : ',distCoeffs)
-                    cameraMatrix = str(cameraMatrix.tolist())
-                    distCoeffs = str(distCoeffs.tolist())
-                    data_calibration = '''Camera Matrix :\n'''+cameraMatrix+'''\nDistortion Coefficients :\n'''+distCoeffs
-                    st.download_button(
-                        label="Save Calibration file",
-                        data=data_calibration,
-                        file_name='calibration.txt',
-                        mime='text/csv',
-                    )
+        #if CalibFiles :
+        CaseLength = st.number_input(label='Square width in mm', min_value=0.00, max_value=None, value=24.40, help='The width in mm of the calibration board Square')                
+        MarkerLength = st.number_input(label='Marker width in mm', min_value=0.00, max_value=None, value=12.30, help='The width in mm of the calibration board Marker')                
+        CalibrateButton = st.button('CALIBRATE CAMERA')
+        if CalibrateButton :
+            st.text(CalibFiles)
+            Processing = st.empty()
+            Processing.text('Please wait while processing, results will be displayed within few secondes...')
+            Cv2Images = []
+            for f in CalibFiles:
+                try :
+                    img = Image.open(f)
+                    Cv2img = np.array(img)
+                    if Cv2img.size > 1 :
+                        Cv2Images.append(Cv2img)
+                    f.seek(0)
+                except Exception as Error:
+                    print(f'cant open {f.name}')
+                    print(Error)
+                    f.seek(0)
+                    continue
+            res, message, cameraMatrix, distCoeffs = Calibrate(CaseLength,MarkerLength,Cv2Images)
+            Processing.text('')
+            st.markdown('### Camera calibration results :')                
+            for line in message :
+                st.text(line)
+            if res :
+                st.write('K Matrix : ',cameraMatrix)
+                st.write('Distorsion coefficients : ',distCoeffs)
+                cameraMatrix = str(cameraMatrix.tolist())
+                distCoeffs = str(distCoeffs.tolist())
+                data_calibration = '''Camera Matrix :\n'''+cameraMatrix+'''\nDistortion Coefficients :\n'''+distCoeffs
+                st.download_button(
+                    label="Save Calibration file",
+                    data=data_calibration,
+                    file_name='calibration.txt',
+                    mime='text/csv',
+                )
 
     if selected_box == 'Bdental Easy Angles':
         bdental_logo()
