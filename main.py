@@ -444,7 +444,8 @@ def main():
     ########################### CAMERA CALIBRATION TOOL Page ################################
     #########################################################################################
     count = 0
-    fount = 100
+    fount = 0
+    image_append = 0
     if selected_box == 'Camera Calibration Tool':
         bdental_logo()
         st.title('Calibration tool')
@@ -476,17 +477,19 @@ def main():
             Processing.text('Please wait while processing, results will be displayed within few secondes...')
             Cv2Images = []
             for f in CalibFiles:
-                count = count+1
                 try :
-                    st.text(count)
+                    st.text('ok'+str(count))
+                    count = count+1
                     img = Image.open(f)
                     Cv2img = np.array(img)
                     if Cv2img.size > 1 :
                         Cv2Images.append(Cv2img)
+                        st.text('append ok'+str(image_append))
+                        image_append = image_append + 1
                 except Exception as Error:
                     print(f'cant open {f.name}')
                     print(Error)
-                    st.text(fount)
+                    st.text('fount'+str(fount))
                     fount = fount + 1
                     continue
                 f.seek(0)
