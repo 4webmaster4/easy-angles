@@ -432,8 +432,6 @@ class AngleAnnotation(Arc):
             offs = trans.transform(((X-s/2), 0))[0] * 72
             self.text.set_position([offs*np.cos(angle), offs*np.sin(angle)])
 
-count = 0
-fount = 100
 MarkersIdCornersDict = dict()
 objects_poses = {}
 def main():
@@ -445,6 +443,8 @@ def main():
     #########################################################################################
     ########################### CAMERA CALIBRATION TOOL Page ################################
     #########################################################################################
+    count = 0
+    fount = 100
     if selected_box == 'Camera Calibration Tool':
         bdental_logo()
         st.title('Calibration tool')
