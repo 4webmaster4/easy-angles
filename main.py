@@ -432,6 +432,8 @@ class AngleAnnotation(Arc):
             offs = trans.transform(((X-s/2), 0))[0] * 72
             self.text.set_position([offs*np.cos(angle), offs*np.sin(angle)])
 
+count = 0
+fount = 100
 MarkersIdCornersDict = dict()
 objects_poses = {}
 def main():
@@ -474,9 +476,9 @@ def main():
             Processing.text('Please wait while processing, results will be displayed within few secondes...')
             Cv2Images = []
             for f in CalibFiles:
-                st.text('0')
+                count = count+1
                 try :
-                    st.text('1')
+                    st.text(count)
                     img = Image.open(f)
                     Cv2img = np.array(img)
                     if Cv2img.size > 1 :
@@ -484,6 +486,8 @@ def main():
                 except Exception as Error:
                     print(f'cant open {f.name}')
                     print(Error)
+                    st.text(fount)
+                    fount = fount + 1
                     continue
                 f.seek(0)
             res, message, cameraMatrix, distCoeffs = Calibrate(CaseLength,MarkerLength,Cv2Images)
