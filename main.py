@@ -479,12 +479,11 @@ def main():
                     Cv2img = np.array(img)
                     if Cv2img.size > 1 :
                         Cv2Images.append(Cv2img)
-                    f.seek(0)
                 except Exception as Error:
                     print(f'cant open {f.name}')
                     print(Error)
-                    f.seek(0)
                     continue
+                f.seek(0)
             res, message, cameraMatrix, distCoeffs = Calibrate(CaseLength,MarkerLength,Cv2Images)
             Processing.text('')
             st.markdown('### Camera calibration results :')                
