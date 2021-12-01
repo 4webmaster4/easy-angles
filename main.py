@@ -499,12 +499,12 @@ def main():
                 f.seek(0)
             res, message, cameraMatrix, distCoeffs = Calibrate(CaseLength,MarkerLength,Cv2Images)
             Processing.text('')
-            #st.markdown('### Camera calibration results :')                
+            st.markdown('### Camera calibration results :')                
             for line in message :
                 st.text(line)
             if res :
-                #st.write('K Matrix : ',cameraMatrix)
-                #st.write('Distorsion coefficients : ',distCoeffs)
+                st.write('K Matrix : ',cameraMatrix)
+                st.write('Distorsion coefficients : ',distCoeffs)
                 cameraMatrix = str(cameraMatrix.tolist())
                 distCoeffs = str(distCoeffs.tolist())
                 data_calibration = '''Camera Matrix :\n'''+cameraMatrix+'''\nDistortion Coefficients :\n'''+distCoeffs
