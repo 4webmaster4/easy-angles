@@ -444,8 +444,8 @@ def main():
     ########################### CAMERA CALIBRATION TOOL Page ################################
     #########################################################################################
     if selected_box == 'Camera Calibration Tool':
-        #bdental_logo()
-        #st.title('Calibration tool')
+        bdental_logo()
+        st.title('Calibration tool')
         ############# Add some User Info ######################################################
         INFO =  [
             'BDENTAL Calibration tool is based on Opencv Charuco board detection.',
@@ -503,8 +503,8 @@ def main():
                 )
 
     if selected_box == 'Bdental Easy Angles':
-        #bdental_logo()
-        #st.title('Easy angles')
+        bdental_logo()
+        st.title('Easy angles')
         image_files = st.file_uploader("Upload Photos", type=['png', 'jpg'], accept_multiple_files=True)
         CalibFile = st.file_uploader("Upload Calibration file", type=([".pckl", "txt"]))
         menu_jaws_positions = ['Central Relation',
