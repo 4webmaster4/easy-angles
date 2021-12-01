@@ -468,13 +468,15 @@ def main():
         CaseLength = st.number_input(label='Square width in mm', min_value=0.00, max_value=None, value=24.40, help='The width in mm of the calibration board Square')                
         MarkerLength = st.number_input(label='Marker width in mm', min_value=0.00, max_value=None, value=12.30, help='The width in mm of the calibration board Marker')                
         CalibrateButton = st.button('CALIBRATE CAMERA')
-        if CalibrateButton :
+        if CalibrateButton:
             st.text(CalibFiles)
             Processing = st.empty()
             Processing.text('Please wait while processing, results will be displayed within few secondes...')
             Cv2Images = []
             for f in CalibFiles:
+                st.text('0')
                 try :
+                    st.text('1')
                     img = Image.open(f)
                     Cv2img = np.array(img)
                     if Cv2img.size > 1 :
@@ -501,7 +503,7 @@ def main():
                     file_name='calibration.txt',
                     mime='text/csv',
                 )
-            Cv2Images=[]
+
     if selected_box == 'Bdental Easy Angles':
         bdental_logo()
         st.title('Easy angles')
