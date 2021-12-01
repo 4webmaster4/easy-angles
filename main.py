@@ -499,7 +499,7 @@ def main():
                         file_name='calibration.txt',
                         mime='text/csv',
                     )
-    
+        CalibFiles=[]
     if selected_box == 'Bdental Easy Angles':
         bdental_logo()
         st.title('Easy angles')
