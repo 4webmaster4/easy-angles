@@ -446,7 +446,6 @@ def main():
     if selected_box == 'Camera Calibration Tool':
         bdental_logo()
         st.title('Calibration tool')
-
         ############# Add some User Info ######################################################
         INFO =  [
             'BDENTAL Calibration tool is based on Opencv Charuco board detection.',
