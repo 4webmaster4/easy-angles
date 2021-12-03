@@ -456,6 +456,7 @@ def main():
         st.write("[Charuco Board pdf download link.](https://github.com/issamdakir/BDENTAL4D-LINUX/blob/291/Resources/ForPrinting/CalibrationBoardA4.pdf)")
 
         ###########################################################################################
+        count = 1
         CalibFiles = st.file_uploader("Upload camera calibration photos", type=['jpg', 'jpeg'], accept_multiple_files=True)
         if CalibFiles :
             CaseLength = st.number_input(label='Square width in mm', min_value=0.00, max_value=None, value=24.40, help='The width in mm of the calibration board Square')                
@@ -474,6 +475,8 @@ def main():
                         if Cv2img.size > 1 :
                             Cv2Images.append(Cv2img)
                             image_append = image_append + 1
+                            st.write('Image ID: '+ str(count))
+                            count = count + 1
                     except Exception as Error:
                         print(f'cant open {f.name}')
                         print(Error)
