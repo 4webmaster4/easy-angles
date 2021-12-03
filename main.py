@@ -9,7 +9,6 @@ import matplotlib.gridspec as gridspec
 from matplotlib.ticker import MultipleLocator
 from matplotlib.patches import Arc
 from matplotlib.transforms import IdentityTransform, TransformedBbox, Bbox
-from time import sleep
 # Constant parameters used in Aruco methods
 ARUCO_PARAMETERS = aruco.DetectorParameters_create()
 ARUCO_DICT = aruco.Dictionary_get(aruco.DICT_APRILTAG_36h11)
@@ -254,7 +253,15 @@ def images_cache(image_files):
 all_images_classified = False
 classified_image_list = []
 
-def images_classifier(image_files, file_pckl, menu_jaws_positions, menu_image_key, menu_jaws_positions_user_list):
+def images_classifier(image_files, file_pckl):
+    
+    menu_jaws_positions = ['Central Relation',
+        'Laterotrusion Left',
+        'Laterotrusion Right',
+        'Maximum Opening',
+        'Protrusion'
+    ]
+    
     menu_image_key = 0
     menu_jaws_positions_user_list = []
     global classified_image_list
@@ -426,7 +433,6 @@ MarkersIdCornersDict = dict()
 objects_poses = {}
 def main():
     bdental_logo()
-
     selected_box = st.sidebar.selectbox(
     'Choose one of the following',
     ('Bdental Easy Angles', 'Camera Calibration Tool')
@@ -437,7 +443,6 @@ def main():
     #########################################################################################
     image_append = 0
     if selected_box == 'Camera Calibration Tool':
-        #bdental_logo()
         st.title('Calibration tool')
         ############# Add some User Info ######################################################
         INFO =  [
@@ -468,7 +473,6 @@ def main():
                 Processing.text('Please wait while processing, results will be displayed within few secondes...')
                 Cv2Images = []
                 for f in CalibFiles:
-                    sleep(0.05)
                     try :
                         img = Image.open(f)
                         Cv2img = np.array(img)
@@ -501,19 +505,10 @@ def main():
                     )
 
     if selected_box == 'Bdental Easy Angles':
-        #bdental_logo()
         st.title('Easy angles')
         image_files = st.file_uploader("Upload Photos", type=['png', 'jpg'], accept_multiple_files=True)
         CalibFile = st.file_uploader("Upload Calibration file", type=([".pckl", "txt"]))
-        menu_jaws_positions = ['Central Relation',
-            'Laterotrusion Left',
-            'Laterotrusion Right',
-            'Maximum Opening',
-            'Protrusion'
-        ]
-        menu_image_key = 0
-        menu_jaws_positions_user_list = []
-        images_classifier(images_cache(image_files), CalibFile, menu_jaws_positions, menu_image_key, menu_jaws_positions_user_list)
+        images_classifier(images_cache(image_files), CalibFile)
         if all_images_classified:
             (cameraMatrix, distCoeffs), _ = GetCamIntrisics_from_File(CalibFile)
             for image_file in image_files:
