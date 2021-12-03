@@ -504,7 +504,7 @@ def main():
                         mime='text/csv',
                     )
 
-    if selected_box == 'Bdental Easy Angles':
+    elif selected_box == 'Bdental Easy Angles':
         st.title('Easy angles')
         image_files = st.file_uploader("Upload Photos", type=['png', 'jpg'], accept_multiple_files=True)
         CalibFile = st.file_uploader("Upload Calibration file", type=([".pckl", "txt"]))
@@ -652,25 +652,19 @@ def main():
                     }
                     st.image(im,use_column_width=True)
             ##########################################
-            UpBoard_Matrix = np.zeros((4, 4))
             Facebow_zero_matrix = np.eye(4)
             left_cond = np.eye(4)
             left_cond[0][3], left_cond[1][3] = 55, -12
             right_cond = np.eye(4)
             right_cond[0][3], right_cond[1][3] = -55, -12
             left_cond_local, right_cond_local = np.eye(4), np.eye(4)
-            # shift_all = np.zeros((4, 4))
-            # shift_all[1][3] = 12
             left_cond_list = []
             right_cond_list = []
             incisial_list =[]
             left_cond_list.append((left_cond[0][3], left_cond[1][3], left_cond[2][3]))
             right_cond_list.append((right_cond[0][3], right_cond[1][3], right_cond[2][3]))
-            #UpBoard_local_CR = np.zeros((4, 4))
-            #UpBoard_transpose_CR = np.zeros((4, 4))
             Facebow_matrix_CR = np.zeros((4, 4))
             for classified_image in sorted(classified_image_list):
-                #st.markdown('**'+str(classified_image[0])+'**')
                 #############################################
                 #STABILIZATION
                 #############################################
