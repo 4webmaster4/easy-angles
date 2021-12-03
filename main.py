@@ -433,12 +433,13 @@ MarkersIdCornersDict = dict()
 objects_poses = {}
 def main():
     bdental_logo()
-    selected_box = st.sidebar.selectbox("Choose one of the following",
-        ["Bdental Easy Angles", "Camera Calibration Tool"])
+    #selected_box = st.sidebar.selectbox("Choose one of the following",
+    #    ["Bdental Easy Angles", "Camera Calibration Tool"])
+    selected_box = st.sidebar.radio('Select one:', ["Bdental Easy Angles", "Camera Calibration Tool"])
     #########################################################################################
     ########################### CAMERA CALIBRATION TOOL Page ################################
     #########################################################################################
-    if selected_box == 'Camera Calibration Tool':
+    if selected_box == "Camera Calibration Tool":
         st.title('Calibration tool')
         ############# Add some User Info ######################################################
         INFO =  [
@@ -498,8 +499,7 @@ def main():
                         file_name='calibration.txt',
                         mime='text/csv',
                     )
-
-    elif selected_box == 'Bdental Easy Angles':
+    elif selected_box == "Bdental Easy Angles":
         st.title('Easy angles')
         image_files = st.file_uploader("Upload Photos", type=['png', 'jpg'], accept_multiple_files=True)
         CalibFile = st.file_uploader("Upload Calibration file", type=([".pckl", "txt"]))
