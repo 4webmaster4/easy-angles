@@ -433,15 +433,11 @@ MarkersIdCornersDict = dict()
 objects_poses = {}
 def main():
     bdental_logo()
-    selected_box = st.sidebar.selectbox(
-    'Choose one of the following',
-    ('Bdental Easy Angles', 'Camera Calibration Tool')
-    )
-
+    selected_box = st.sidebar.selectbox("Choose one of the following",
+        ["Bdental Easy Angles", "Camera Calibration Tool"])
     #########################################################################################
     ########################### CAMERA CALIBRATION TOOL Page ################################
     #########################################################################################
-    image_append = 0
     if selected_box == 'Camera Calibration Tool':
         st.title('Calibration tool')
         ############# Add some User Info ######################################################
@@ -478,7 +474,6 @@ def main():
                         Cv2img = np.array(img)
                         if Cv2img.size > 1 :
                             Cv2Images.append(Cv2img)
-                            image_append = image_append + 1
                             st.write('Image ID: '+ str(count))
                             count = count + 1
                     except Exception as Error:
