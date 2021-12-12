@@ -1,8 +1,9 @@
 import streamlit as st
-from PIL import Image
 import cv2
+from streamlit.proto.Empty_pb2 import Empty
 import cv2.aruco as aruco
 import numpy as np
+from numpy import asarray
 import pickle
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -148,84 +149,66 @@ Left_TMJ_board = aruco.Board_create(board_corners_facebow, ARUCO_DICT, Left_TMJ_
 Nose_board = aruco.Board_create(board_corners_facebow_nose, ARUCO_DICT, Nose_board_ids)
 
 
-def Calibrate(squareLength,markerLength,Cv2Images) :
-
+def Calibrate(squareLength,markerLength,CalibFiles,Processing) :
+    
     ARUCO_DICT = aruco.Dictionary_get(aruco.DICT_5X5_1000)
     CHARUCO_BOARD = aruco.CharucoBoard_create(5,7,squareLength,markerLength,ARUCO_DICT)   
     corners_all = []  # Corners discovered in all images processed
     ids_all = []  # Aruco ids corresponding to corners discovered
     counter = 0
     image_size = tuple()
-
-    for Cv2img in Cv2Images:
-        gray = cv2.cvtColor(Cv2img, cv2.COLOR_BGR2GRAY)
-        if not image_size :
-            image_size = gray.shape[::-1]
-        else :
-            if image_size != gray.shape[::-1] :
-                res = 0
-                message = [
-                            "WARNING:",
-                            "Calibration was unsuccessful!",
-                            "Calibration Images have not uniforme size.",
-                            "Please Remove Uploded Images, and try upload uniforme sized images,"
-                            "from same camera and retry."  ]
-                return res, message, None, None
-            else :
-                corners, ids, _ = aruco.detectMarkers(
-                    image=gray, dictionary=ARUCO_DICT, parameters=ARUCO_PARAMETERS 
-                )
+    message = []
+    res = 0
+    n = len(CalibFiles)
+    for i in range(n):
+        f = CalibFiles.pop()
+        pourcentage = round((i/n)*100)
+        Processing.text(f'{pourcentage} % processessing ...')
+        try :
+            file_bytes = np.asarray(bytearray(f.read()), dtype=np.uint8)
+            Cv2img = cv2.imdecode(file_bytes, 1)
+            gray = cv2.cvtColor(Cv2img, cv2.COLOR_BGR2GRAY)
+            if gray is not None :
+                if not image_size :
+                    image_size = gray.shape[::-1]
+                else :
+                    if image_size != gray.shape[::-1] :
+                        
+                        message = [
+                                    "WARNING:",
+                                    "Calibration was unsuccessful!",
+                                    "Calibration Images have not uniforme size.",
+                                    "Please Remove Uploded Images, and try upload uniforme sized images,"
+                                    "from same camera and retry."  ]
+                        break
+                        
+                    else :
+                        corners, ids, _ = aruco.detectMarkers(
+                            image=gray, dictionary=ARUCO_DICT, parameters=ARUCO_PARAMETERS 
+                        )
                 
-                if corners :
-                    response,charuco_corners,charuco_ids = aruco.interpolateCornersCharuco(
-                        markerCorners=corners,
-                        markerIds=ids,
-                        image=gray,
-                        board=CHARUCO_BOARD,
-                    )
-                    if response > 20:
-                        # Add these corners and ids to our calibration arrays
-                        corners_all.append(charuco_corners)
-                        ids_all.append(charuco_ids)
-                        # Draw the Charuco board we've detected to show our calibrator the board was properly detected
-                        counter+=1
-        
-    if counter < 10 :
-        res = 0
-        message = [
-        "WARNING:",
-        "Calibration was unsuccessful!",
-        f"{counter}  processed Calibration Images.",
-        "A minimum of 10 good images is required.",
-        "Please try upload more images and retry."]
-        return res, message, None, None
-
-    if 10 <= counter < 20 :
-        message = [
-        f"{counter}  processed Calibration Images.",  
-        "Precision : Calibration result may be imprecise.",
-        "##################################################"]
-    if 20 <= counter < 40 :
-        message = [
-        f"{counter} processed Calibration Images.",  
-        "Precision : Good Calibration results.",
-        "##################################################"]
-    if 40 <= counter : 
-        message = [
-        f"{counter} processed Calibration Images.",  
-        "Precision : Excellent Calibration results .",
-        "##################################################"]
-
-    calibration,cameraMatrix,distCoeffs,rvecs,tvecs = aruco.calibrateCameraCharuco(
-        charucoCorners=corners_all,
-        charucoIds=ids_all,
-        board=CHARUCO_BOARD,
-        imageSize=image_size,
-        cameraMatrix=None,
-        distCoeffs=None,
-        )
-    res = 1
-    return res, message, cameraMatrix, distCoeffs
+                        if corners :
+                            response,charuco_corners,charuco_ids = aruco.interpolateCornersCharuco(
+                                markerCorners=corners,
+                                markerIds=ids,
+                                image=gray,
+                                board=CHARUCO_BOARD,
+                            )
+                            if response > 20:
+                                # Add these corners and ids to our calibration arrays
+                                corners_all.append(charuco_corners)
+                                ids_all.append(charuco_ids)
+                                # Draw the Charuco board we've detected to show our calibrator the board was properly detected
+                                
+                                counter+=1
+                
+        except Exception as Error:
+            print(f'cant open {f.name}')
+            print(Error)
+            continue
+    if corners_all and ids_all : res = 1
+    return res, message, CHARUCO_BOARD,image_size, corners_all, ids_all, counter
+    #################################"]
 
 
 def GetCamIntrisics_from_File(CalibFile):
@@ -242,42 +225,41 @@ def GetCamIntrisics_from_File(CalibFile):
 ###################################################################################################
 
 def bdental_logo():    
-    image = Image.open('images/logo.png')
+    image = cv2.imread('images/logo.png', cv2.IMREAD_UNCHANGED)
+    image = cv2.cvtColor(image, cv2.COLOR_RGBA2BGRA)
     st.image(image, width=128)
-
-@st.cache(allow_output_mutation=True)
-def images_cache(image_files):
-    images_cached=image_files
-    return images_cached
-
+l = 12
 all_images_classified = False
 classified_image_list = []
-
 def images_classifier(image_files, file_pckl):
-    
     menu_jaws_positions = ['Central Relation',
         'Laterotrusion Left',
         'Laterotrusion Right',
         'Maximum Opening',
         'Protrusion'
     ]
-    
     menu_image_key = 0
     menu_jaws_positions_user_list = []
     global classified_image_list
     global all_images_classified
+    global l
     for image_file in image_files:    
         if image_file and file_pckl and not all_images_classified:
-            im = Image.open(image_file)
-            im_small = np.array(im)
-            im_small = cv2.pyrDown(im_small)
-            im_small = cv2.pyrDown(im_small)
+            image_file.seek(0) 
+            file_bytes_class = np.asarray(bytearray(image_file.read()), dtype=np.uint8)
+            im = cv2.cvtColor(cv2.imdecode(file_bytes_class, 1), cv2.COLOR_BGR2RGB)
+            im_small = cv2.pyrDown(cv2.pyrDown(im))
 
             st.image(im_small,use_column_width=True)
             option = st.radio('Select lower jaw position:', menu_jaws_positions, key = menu_image_key)
             menu_jaws_positions_user_list.append(option)
             menu_image_key = menu_image_key+1
             if (sorted(menu_jaws_positions_user_list)) == menu_jaws_positions:
+                col2, col3 = st.columns(2)
+                image = cv2.imread('images/l.png', cv2.IMREAD_UNCHANGED)
+                image = cv2.cvtColor(image, cv2.COLOR_RGBA2BGRA)
+                col3.image(image)#, width=128)
+                l = col2.number_input('label in mm', min_value=None, max_value=None, value=12)
                 if st.button('Calculate angles'):
                     for i in range(5):
                         classified_image = menu_jaws_positions_user_list[i], image_files[i].name
@@ -433,225 +415,274 @@ MarkersIdCornersDict = dict()
 objects_poses = {}
 def main():
     bdental_logo()
-    #selected_box = st.sidebar.selectbox("Choose one of the following",
-    #    ["Bdental Easy Angles", "Camera Calibration Tool"])
-    selected_box = st.sidebar.radio('Select one:', ["Bdental Easy Angles", "Camera Calibration Tool"])
+    
+    pages = {
+        "Bdental Easy Angles": easy_angles_page,
+        "Camera Calibration Tool": calib_tool_page,
+    }   
+    page = st.sidebar.selectbox("Select page", tuple(pages.keys()))
+    pages[page]()
+
+def calib_tool_page():
     #########################################################################################
     ########################### CAMERA CALIBRATION TOOL Page ################################
     #########################################################################################
-    if selected_box == "Camera Calibration Tool":
-        st.title('Calibration tool')
-        ############# Add some User Info ######################################################
-        INFO =  [
-            'BDENTAL Calibration tool is based on Opencv Charuco board detection.',
-            'It is a robust camera calibration method, that will generate a .txt file,',
-            'containing Camera Calibration parameters.',
-            'For consistant and precise results please refere to this recommendations :',
-            'Minimum : 10 photos',
-            'Optimal : 20 photos',
-            'Good : 30 photos',
-            'Excellent : 40+ photos',
-            'You can download the charuco board from :',
-            ]
-        for line in INFO :
-            st.text(line)
-        st.write("[Charuco Board pdf download link.](https://github.com/issamdakir/BDENTAL4D-LINUX/blob/291/Resources/ForPrinting/CalibrationBoardA4.pdf)")
+    ############# Add some User Info ########################################################
+    st.title('Calibration tool')
+    calibration_text = '''<p style="font-family:sans-serif; color:Black; font-size: 16px;">
+        <p>
+        is based on OpenCV Charuco board detection.</br>
+        It is a robust camera calibration method, that will generate a .txt file, containing Camera Calibration parameters.
+        For consistant and precise results please refere to this recommendations:</br>
+        <b>Minimum</b> : 10 photos</br>
+        <b>Good</b> : 30 photos</br>
+        <b>Excellent</b> : 40 photos
+        '''
+    st.markdown(calibration_text, unsafe_allow_html=True)
+    st.write("[Charuco Board pdf download link.](https://github.com/issamdakir/BDENTAL4D-LINUX/blob/291/Resources/ForPrinting/CalibrationBoardA4.pdf)")
+    ###########################################################################################
+    CaseLength = st.number_input(label='Square width', min_value=0.00, max_value=None, value=24.40, help='The width in mm of the calibration board Square')                
+    MarkerLength = st.number_input(label='Marker width', min_value=0.00, max_value=None, value=12.30, help='The width in mm of the calibration board Marker')                
+    CalibFiles = st.file_uploader("Upload camera calibration photos :", type=['jpg', 'jpeg'], help="Upload camera calibration photos in .jpeg or .jpg", accept_multiple_files=True)
+    if CalibFiles:
+        st.markdown('**'+str(len(CalibFiles))+' images uploaded'+'**')
+        CalibrateButton = st.button('CALIBRATE CAMERA')
+        if CalibrateButton:
+            Processing = st.empty()
+            Processing.text('Please wait while processing, results will be displayed within few secondes...')
+            res, message,CHARUCO_BOARD,image_size, corners_all, ids_all, counter = Calibrate(CaseLength,MarkerLength,CalibFiles,Processing)
+            if res :
+                calibration,cameraMatrix,distCoeffs,rvecs,tvecs = aruco.calibrateCameraCharuco(
+                charucoCorners=corners_all,
+                charucoIds=ids_all,
+                board=CHARUCO_BOARD,
+                imageSize=image_size,
+                cameraMatrix=None,
+                distCoeffs=None,
+                )
+            Processing.text('')
+            #'## RESULTS: ##'
+            st.markdown('## Camera calibration results: ##')
+            st.markdown('**'+str(counter+1)+' images used in calibration**')
 
-        ###########################################################################################
-        count = 1
-        CalibFiles = st.file_uploader("Upload camera calibration photos", type=['jpg', 'jpeg'], accept_multiple_files=True)
-        if CalibFiles :
-            CaseLength = st.number_input(label='Square width in mm', min_value=0.00, max_value=None, value=24.40, help='The width in mm of the calibration board Square')                
-            MarkerLength = st.number_input(label='Marker width in mm', min_value=0.00, max_value=None, value=12.30, help='The width in mm of the calibration board Marker')                
-            CalibrateButton = st.button('CALIBRATE CAMERA')
-            if CalibrateButton:
-                st.text(CalibFiles)
-                Processing = st.empty()
-                Processing.text('Please wait while processing, results will be displayed within few secondes...')
-                Cv2Images = []
-                for f in CalibFiles:
-                    try :
-                        img = Image.open(f)
-                        Cv2img = np.array(img)
-                        if Cv2img.size > 1 :
-                            Cv2Images.append(Cv2img)
-                            st.write('Image ID: '+ str(count))
-                            count = count + 1
-                    except Exception as Error:
-                        print(f'cant open {f.name}')
-                        print(Error)
-                        continue
-                    f.seek(0)
-                res, message, cameraMatrix, distCoeffs = Calibrate(CaseLength,MarkerLength,Cv2Images)
-                Processing.text('')
-                st.markdown('### Camera calibration results :')                
-                for line in message :
-                    st.text(line)
-                if res :
-                    st.write('K Matrix : ',cameraMatrix)
-                    st.write('Distorsion coefficients : ',distCoeffs)
-                    cameraMatrix = str(cameraMatrix.tolist())
-                    distCoeffs = str(distCoeffs.tolist())
-                    data_calibration = '''Camera Matrix :\n'''+cameraMatrix+'''\nDistortion Coefficients :\n'''+distCoeffs
-                    st.download_button(
-                        label="Save Calibration file",
-                        data=data_calibration,
-                        file_name='calibration.txt',
-                        mime='text/csv',
-                    )
-    elif selected_box == "Bdental Easy Angles":
-        st.title('Easy angles')
-        image_files = st.file_uploader("Upload Photos", type=['png', 'jpg'], accept_multiple_files=True)
-        CalibFile = st.file_uploader("Upload Calibration file", type=([".pckl", "txt"]))
-        images_classifier(images_cache(image_files), CalibFile)
-        if all_images_classified:
-            (cameraMatrix, distCoeffs), _ = GetCamIntrisics_from_File(CalibFile)
-            for image_file in image_files:
-                im = Image.open(image_file)
-                im = np.array(im)
-                gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-                if cameraMatrix is None or distCoeffs is None:
-                    st.text("Calibration issue")
-                else:
-                    corners, ids, rejected = aruco.detectMarkers(gray, ARUCO_DICT, parameters=ARUCO_PARAMETERS, cameraMatrix=cameraMatrix, distCoeff=distCoeffs)
-                    if np.all(ids is not None):
-                        facebow_tvecs = []
-                        for i in range(len(ids)):
-                            MarkersIdCornersDict[ids[i][0]] = (list(corners))[i]
-                            pts = MarkersIdCornersDict[ids[i][0]].astype(int)
-                            pts = pts.reshape((-1,1,2))
-                            cv2.fillConvexPoly(	im, pts, (255,174,0))
-                        FaceBow_ids_list = np.array([6,7,8,9,10,11,12,13,14])
-                        condition_facebow = FaceBow_ids_list in ids
-                        condition_upboard = UpBoard_ids[0] in ids
-                        condition_lowboard = LowBoard_ids[0] in ids
-                        ####################################################
-                        #Facebow Boards
-                        ####################################################
-                        #Right TMJ Board
-                        if condition_facebow:
-                            Right_TMJ_Corners = [
-                                MarkersIdCornersDict[6],
-                                MarkersIdCornersDict[7],
-                                MarkersIdCornersDict[8],
-                            ]
-                            Right_TMJ_retval, Right_TMJ_Rvec, Right_TMJ_Tvec = cv2.aruco.estimatePoseBoard(
-                                Right_TMJ_Corners,
-                                Right_TMJ_board_ids,
-                                Right_TMJ_board,
-                                cameraMatrix,
-                                distCoeffs,
-                                None,
-                                None,
-                            )
-                            #aruco.drawAxis(im, cameraMatrix, distCoeffs, Right_TMJ_Rvec, Right_TMJ_Tvec, 0.03)
-                            Right_TMJ_Tvec = Right_TMJ_Tvec.reshape((3, 1))*1000
-                            Right_TMJ_Tvec = ['6', Right_TMJ_Tvec[0][0], Right_TMJ_Tvec[2][0], -Right_TMJ_Tvec[1][0]]
-                            facebow_tvecs.append(Right_TMJ_Tvec)
-                        #Left TMJ Board
-                            Left_TMJ_Corners = [
-                                MarkersIdCornersDict[9],
-                                MarkersIdCornersDict[10],
-                                MarkersIdCornersDict[11],
-                            ]
-                            Left_TMJ_retval, Left_TMJ_Rvec, Left_TMJ_Tvec = cv2.aruco.estimatePoseBoard(
-                                Left_TMJ_Corners,
-                                Left_TMJ_board_ids,
-                                Left_TMJ_board,
-                                cameraMatrix,
-                                distCoeffs,
-                                None,
-                                None,
-                            )
-                            Left_TMJ_Tvec = Left_TMJ_Tvec.reshape((3, 1))*1000
-                            Left_TMJ_Tvec = ['8', Left_TMJ_Tvec[0][0], Left_TMJ_Tvec[2][0], -Left_TMJ_Tvec[1][0]]
-                            facebow_tvecs.append(Left_TMJ_Tvec)
-                        #Nose Board
-                            Nose_Corners = [
-                                MarkersIdCornersDict[12],
-                                MarkersIdCornersDict[13],
-                                MarkersIdCornersDict[14],
-                            ]
-                            Nose_retval, Nose_Rvec, Nose_Tvec = cv2.aruco.estimatePoseBoard(
-                                Nose_Corners,
-                                Nose_board_ids,
-                                Nose_board,
-                                cameraMatrix,
-                                distCoeffs,
-                                None,
-                                None,
-                            )
-                            Nose_Tvec = Nose_Tvec.reshape((3, 1))*1000
-                            Nose_Tvec = ['7', Nose_Tvec[0][0], Nose_Tvec[2][0], -Nose_Tvec[1][0]]
-                            facebow_tvecs.append(Nose_Tvec)
-                        ####################################################
-                        #UpBoard
-                        ####################################################
-                        if condition_upboard: 
-                            UpCorners = [
-                                MarkersIdCornersDict[0],
-                                MarkersIdCornersDict[1],
-                                MarkersIdCornersDict[2],
-                            ]
-                            Upretval, Up_Rvec, Up_Tvec = cv2.aruco.estimatePoseBoard(
-                                UpCorners,
-                                UpBoard_ids,
-                                UpBoard,
-                                cameraMatrix,
-                                distCoeffs,
-                                None,
-                                None,
-                            )
-                            Up_Rvec, _ = cv2.Rodrigues(Up_Rvec)
-                            Up_Tvec = Up_Tvec.reshape((3, 1))
-                            Up_Board_matrix = np.concatenate((Up_Rvec, Up_Tvec*1000), axis=1)
-                            Up_Board_matrix[[1, 2]] = Up_Board_matrix[[2, 1]]
-                            c = np.array([[1,1,1,1], [1,1,1,1], [-1,-1,-1,-1]])
-                            Up_Board_matrix = Up_Board_matrix*c
-                            Up_Board_matrix = np.vstack([Up_Board_matrix, newrow])
-                            Up_Board_matrix = Up_Board_matrix.tolist()
-                        ####################################################
-                        #LowBoard
-                        ####################################################
-                        if condition_lowboard: 
-                            LowCorners = [
-                                MarkersIdCornersDict[3],
-                                MarkersIdCornersDict[4],
-                                MarkersIdCornersDict[5],
-                            ]
-                            Lowretval, Low_Rvec, Low_Tvec = cv2.aruco.estimatePoseBoard(
-                                LowCorners,
-                                LowBoard_ids,
-                                LowBoard,
-                                cameraMatrix,
-                                distCoeffs,
-                                None,
-                                None,
-                            )
-                            Low_Rvec, _ = cv2.Rodrigues(Low_Rvec)
-                            Low_Tvec = Low_Tvec.reshape((3, 1))
-                            Low_Board_matrix = np.concatenate((Low_Rvec, Low_Tvec*1000), axis=1)
-                            Low_Board_matrix[[1, 2]] = Low_Board_matrix[[2, 1]]
-                            c = np.array([[1,1,1,1], [1,1,1,1], [-1,-1,-1,-1]])
-                            Low_Board_matrix = Low_Board_matrix*c
-                            Low_Board_matrix = np.vstack([Low_Board_matrix, newrow])
-                            Low_Board_matrix = Low_Board_matrix.tolist()
-                        #cv2.aruco.drawDetectedMarkers(im,corners,ids)
-                    #######################################
-                    #Write data to dict
-                    #######################################
+            for line in message :
+                st.text(line)
+            if res :
+                st.write('K Matrix : ',cameraMatrix)
+                st.write('Distorsion coefficients : ',distCoeffs)
+                cameraMatrix = str(cameraMatrix.tolist())
+                distCoeffs = str(distCoeffs.tolist())
+                data_calibration = '''Camera Matrix :\n'''+cameraMatrix+'''\nDistortion Coefficients :\n'''+distCoeffs
+                st.download_button(
+                    label="Save Calibration file",
+                    data=data_calibration,
+                    file_name='calibration.txt',
+                    mime='text/csv',
+                )    
+
+def easy_angles_page(): 
+    st.title('Easy angles')
+    image_files = st.file_uploader("Upload 5 photos. In central relation, laterotrusion right, laterotrusion left, maximum opening and protrusion.", type=['png', 'jpg'], accept_multiple_files=True)
+    CalibFile = st.file_uploader("Upload Calibration file, genereted in Camera Calibration Tool", type=([".pckl", "txt"]))
+    if image_files:
+        if len(image_files) != 5:
+            st.markdown('<span style="color:red; font-size: 20px;"><b>Needed: 5 images, uploaded: '+str(len(image_files))+'</b></span>', unsafe_allow_html=True)
+            return
+
+    images_classifier(image_files, CalibFile)
+    missed_marker = False
+
+    if all_images_classified:
+        (cameraMatrix, distCoeffs), _ = GetCamIntrisics_from_File(CalibFile)
+        for image_file in image_files:
+            image_file.seek(0)
+            file_bytes_class = np.asarray(bytearray(image_file.read()), dtype=np.uint8)
+            CvImage_decode = cv2.cvtColor(cv2.imdecode(file_bytes_class, 1), cv2.COLOR_BGR2RGB) 
+            gray = cv2.cvtColor(CvImage_decode, cv2.COLOR_BGR2GRAY)
+            CvImage = cv2.undistort(CvImage_decode, cameraMatrix, distCoeffs, None, None)
+            if cameraMatrix is None or distCoeffs is None:
+                st.text("Calibration issue")
+            else:
+                corners, ids, rejected = aruco.detectMarkers(gray, ARUCO_DICT, parameters=ARUCO_PARAMETERS, cameraMatrix=cameraMatrix, distCoeff=distCoeffs)
+                ##############################################
+                #Checking number of markers in image
+                for classified_image in classified_image_list:
+                    if image_file.name == classified_image[1]:
+                        msg = []
+                        if classified_image[0] == "Central Relation":
+                            msg.append(classified_image[0])
+                            msg.append('Markers needed: 15;'+' Markers visible: '+str(ids.shape[0]))
+                            if ids.shape[0] == 15:
+                                msg.append('ok')
+                            else:
+                                msg.append('Warning!! Some of markers not visible')
+                                missed_marker = True
+                        else:
+                            msg.append(classified_image[0])
+                            msg.append('Markers needed: 6;'+' Markers visible: '+str(ids.shape[0]))
+                            if ids.shape[0] == 6:
+                                msg.append('ok')
+                            else:
+                                msg.append('Warning!! Some of markers not visible')
+                                missed_marker = True
+
+                    facebow_tvecs = []
+                    #Make dictionary from visible markers and draw them on image
+                    for i in range(len(ids)):
+                        MarkersIdCornersDict[ids[i][0]] = (list(corners))[i]
+                        pts = MarkersIdCornersDict[ids[i][0]].astype(int)
+                        pts = pts.reshape((-1,1,2))
+                        cv2.fillConvexPoly(	CvImage, pts, (255,174,0))
+                if missed_marker == False:
+                    FaceBow_ids_list = np.array([6,7,8,9,10,11,12,13,14])
+                    condition_facebow = FaceBow_ids_list in ids
+                    condition_upboard = UpBoard_ids[0] in ids
+                    condition_lowboard = LowBoard_ids[0] in ids
+
+                    ####################################################
+                    #Facebow Boards
+                    ####################################################
+                    #Right TMJ Board
+                    if condition_facebow:
+                        Right_TMJ_Corners = [
+                            MarkersIdCornersDict[6],
+                            MarkersIdCornersDict[7],
+                            MarkersIdCornersDict[8],
+                        ]
+                        Right_TMJ_retval, Right_TMJ_Rvec, Right_TMJ_Tvec = cv2.aruco.estimatePoseBoard(
+                            Right_TMJ_Corners,
+                            Right_TMJ_board_ids,
+                            Right_TMJ_board,
+                            cameraMatrix,
+                            distCoeffs,
+                            None,
+                            None,
+                        )
+                        Right_TMJ_Tvec = Right_TMJ_Tvec.reshape((3, 1))*1000
+                        Right_TMJ_Tvec = ['6', Right_TMJ_Tvec[0][0], Right_TMJ_Tvec[2][0], -Right_TMJ_Tvec[1][0]]
+                        facebow_tvecs.append(Right_TMJ_Tvec)
+                    #Left TMJ Board
+                        Left_TMJ_Corners = [
+                            MarkersIdCornersDict[9],
+                            MarkersIdCornersDict[10],
+                            MarkersIdCornersDict[11],
+                        ]
+                        Left_TMJ_retval, Left_TMJ_Rvec, Left_TMJ_Tvec = cv2.aruco.estimatePoseBoard(
+                            Left_TMJ_Corners,
+                            Left_TMJ_board_ids,
+                            Left_TMJ_board,
+                            cameraMatrix,
+                            distCoeffs,
+                            None,
+                            None,
+                        )
+                        Left_TMJ_Tvec = Left_TMJ_Tvec.reshape((3, 1))*1000
+                        Left_TMJ_Tvec = ['8', Left_TMJ_Tvec[0][0], Left_TMJ_Tvec[2][0], -Left_TMJ_Tvec[1][0]]
+                        facebow_tvecs.append(Left_TMJ_Tvec)
+                    #Nose Board
+                        Nose_Corners = [
+                            MarkersIdCornersDict[12],
+                            MarkersIdCornersDict[13],
+                            MarkersIdCornersDict[14],
+                        ]
+                        Nose_retval, Nose_Rvec, Nose_Tvec = cv2.aruco.estimatePoseBoard(
+                            Nose_Corners,
+                            Nose_board_ids,
+                            Nose_board,
+                            cameraMatrix,
+                            distCoeffs,
+                            None,
+                            None,
+                        )
+                        Nose_Tvec = Nose_Tvec.reshape((3, 1))*1000
+                        Nose_Tvec = ['7', Nose_Tvec[0][0], Nose_Tvec[2][0], -Nose_Tvec[1][0]]
+                        facebow_tvecs.append(Nose_Tvec)
+                    ####################################################
+                    #UpBoard
+                    ####################################################
+                    if condition_upboard: 
+                        UpCorners = [
+                            MarkersIdCornersDict[0],
+                            MarkersIdCornersDict[1],
+                            MarkersIdCornersDict[2],
+                        ]
+                        Upretval, Up_Rvec, Up_Tvec = cv2.aruco.estimatePoseBoard(
+                            UpCorners,
+                            UpBoard_ids,
+                            UpBoard,
+                            cameraMatrix,
+                            distCoeffs,
+                            None,
+                            None,
+                        )
+                        Up_Rvec, _ = cv2.Rodrigues(Up_Rvec)
+                        Up_Tvec = Up_Tvec.reshape((3, 1))
+                        Up_Board_matrix = np.concatenate((Up_Rvec, Up_Tvec*1000), axis=1)
+                        Up_Board_matrix[[1, 2]] = Up_Board_matrix[[2, 1]]
+                        c = np.array([[1,1,1,1], [1,1,1,1], [-1,-1,-1,-1]])
+                        Up_Board_matrix = Up_Board_matrix*c
+                        Up_Board_matrix = np.vstack([Up_Board_matrix, newrow])
+                        Up_Board_matrix = Up_Board_matrix.tolist()
+                    ####################################################
+                    #LowBoard
+                    ####################################################
+                    if condition_lowboard: 
+                        LowCorners = [
+                            MarkersIdCornersDict[3],
+                            MarkersIdCornersDict[4],
+                            MarkersIdCornersDict[5],
+                        ]
+                        Lowretval, Low_Rvec, Low_Tvec = cv2.aruco.estimatePoseBoard(
+                            LowCorners,
+                            LowBoard_ids,
+                            LowBoard,
+                            cameraMatrix,
+                            distCoeffs,
+                            None,
+                            None,
+                        )
+                        Low_Rvec, _ = cv2.Rodrigues(Low_Rvec)
+                        Low_Tvec = Low_Tvec.reshape((3, 1))
+                        Low_Board_matrix = np.concatenate((Low_Rvec, Low_Tvec*1000), axis=1)
+                        Low_Board_matrix[[1, 2]] = Low_Board_matrix[[2, 1]]
+                        c = np.array([[1,1,1,1], [1,1,1,1], [-1,-1,-1,-1]])
+                        Low_Board_matrix = Low_Board_matrix*c
+                        Low_Board_matrix = np.vstack([Low_Board_matrix, newrow])
+                        Low_Board_matrix = Low_Board_matrix.tolist()
+                #######################################
+                #Write data to dict
+                #######################################
                     objects_poses[image_file.name] = {
                         "Facebow_tvecs" : facebow_tvecs,
                         "Up_Board_matrix" : Up_Board_matrix,
                         "Low_Board_matrix" : Low_Board_matrix
                     }
-                    st.image(im,use_column_width=True)
-            ##########################################
+                    
+                    CvImage = cv2.pyrDown(cv2.pyrDown(CvImage))
+                    st.image(CvImage,use_column_width=True)
+                    st.markdown('### '+msg[0]+'<span style="color:green; font-size: 40px;">'+' &check;</span>', unsafe_allow_html=True)
+                    #st.markdown('**'+msg[1]+'**')
+                    #st.markdown('<span style="color:red; font-size: 20px;">'+'**'+msg[2]+'** </span>', unsafe_allow_html=True)
+
+                else:
+                    CvImage = cv2.pyrDown(cv2.pyrDown(CvImage))
+                    st.image(CvImage,use_column_width=True)
+                    if msg[2] == 'ok':
+                        st.markdown('### '+msg[0]+'<span style="color:red; font-size: 40px;">'+' &check;</span>', unsafe_allow_html=True)
+                    else:
+                        st.markdown('### '+msg[0]+'<span style="color:red; font-size: 40px;">'+' &#10005;</span>', unsafe_allow_html=True)
+                        st.markdown('**'+msg[1]+'**')
+                    st.markdown('  ')
+
+        ##########################################
+        if missed_marker == True:
+            st.markdown('<span style="color:red; font-size: 25px;">'+'<b>Sorry, i can not mesure angles. Some markers not visible.</b></span>', unsafe_allow_html=True)
+        else:
             Facebow_zero_matrix = np.eye(4)
             left_cond = np.eye(4)
-            left_cond[0][3], left_cond[1][3] = 55, -12
+            left_cond[0][3], left_cond[1][3] = 55, -l#-12
             right_cond = np.eye(4)
-            right_cond[0][3], right_cond[1][3] = -55, -12
+            right_cond[0][3], right_cond[1][3] = -55, -l#-12
             left_cond_local, right_cond_local = np.eye(4), np.eye(4)
             left_cond_list = []
             right_cond_list = []
@@ -697,7 +728,7 @@ def main():
             #############################################
             #POINTS AND LINES
             #############################################
-            st.markdown('**RESULTS**')
+            st.markdown('## Results: ##')
 
             #INCISIAL POINTS COORDS######################
             IP_CR_X, IP_CR_Y, IP_CR_Z = incisial_list[0][0], incisial_list[0][1], incisial_list[0][2]
@@ -1517,6 +1548,5 @@ def main():
                 + " mm",
             )
             st.pyplot(fig)
-
 if __name__ == "__main__":
     main()
